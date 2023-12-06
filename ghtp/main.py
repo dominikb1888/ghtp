@@ -1,9 +1,10 @@
-import click
-import typer
+import json
 import os
 from urllib.request import urlopen, Request
-import json
 
+import click
+import typer
+from rich import print
 
 cli = typer.Typer()
 
@@ -46,7 +47,7 @@ def gallery(ghorg, option):
     print(headers)
     url = f"https://api.github.com/orgs/{config['GHORG']}/repos?per_page=100"
     httprequest = Request(url, headers=headers)
-    print(url)
+    rich.print(url)
     with urlopen(httprequest) as response:
         if response.status == 200:
             data = json.loads(response.read().decode())
@@ -54,7 +55,7 @@ def gallery(ghorg, option):
             for repo in data:
                 names.append(repo['name'])
         else:
-            click.echo(f"Failed to fetch repos. Status code: {response.status_code}")
+           rich.print(f"Failed to fetch repos. Status code: {response.status_code}")
 
     authors = {}
     for name in names:
@@ -68,7 +69,7 @@ def gallery(ghorg, option):
                 if author:
                     authors[author['login']] = author
             else:
-                click.echo(f"Failed to fetch commits. Status code: {response.status_code}")
+                rich.print(f"Failed to fetch commits. Status code: {response.status_code}")
 
     text = []
     for author in authors.values():
@@ -77,7 +78,7 @@ def gallery(ghorg, option):
         text.append(f"[![{name}]({img})]({url})")
 
     result = " ".join(text)
-    click.echo(result)
+    rich.print(result)
 
     with open('gallery.md', 'w') as file:
         file.write(result)
