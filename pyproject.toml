@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "ghtp"
+version = "0.1.0"
+description = ""
+authors = ["Dominik Boehler <dominik.boehler@gmx.net>"]
+readme = "README.md"
+
+[tool.poetry.scripts]
+ghtp = "ghtp.main:cli"
+
+
+[tool.poetry.dependencies]
+python = "^3.10"
+typer = {extras = ["all"], version = "^0.9.0"}
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
