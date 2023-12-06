@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import json
 import os
 from urllib.request import urlopen, Request
@@ -5,8 +6,11 @@ from urllib.request import urlopen, Request
 import click
 import typer
 from rich import print
+from rich.progress import track
+from rich.table import Table
 
 cli = typer.Typer()
+
 
 @click.group()
 @click.version_option()
@@ -15,9 +19,7 @@ def cli():
 
 
 @cli.command(name="gallery")
-@click.argument(
-    "ghorg"
-)
+@click.argument("ghorg")
 @click.option(
     "-o",
     "--option",
@@ -29,56 +31,61 @@ def gallery(ghorg, option):
     ## TODO: Check if .env file exists if not ask user to create one
     ## TODO: authenticate via gh?
     if os.environ.get("GHTOKEN"):
-        config = { 'GHTOKEN': os.environ.get("GHTOKEN"), 'GHORG': os.environ.get("GHORG") }
-    else: 
-        env = '../.env' if os.path.exists('../.env') else '.env'
+        config = {
+            "GHTOKEN": os.environ.get("GHTOKEN"),
+            "GHORG": os.environ.get("GHORG"),
+        }
+    else:
+        env = "../.env" if os.path.exists("../.env") else ".env"
         with open(env) as f:
             config = {}
             for line in f.readlines():
-                k,v = line.strip().split("=")
+                k, v = line.strip().split("=")
                 config[k] = v
 
-            config['GHORG']=ghorg     
-    print(config)
+            config["GHORG"] = ghorg
+
     headers = {
-         'Authorization': f"token {config['GHTOKEN']}",
-         'Accept': 'application/vnd.github.v3+json'
+        "Authorization": f"token {config['GHTOKEN']}",
+        "Accept": "application/vnd.github.v3+json",
     }
-    print(headers)
+
     url = f"https://api.github.com/orgs/{config['GHORG']}/repos?per_page=100"
     httprequest = Request(url, headers=headers)
-    rich.print(url)
     with urlopen(httprequest) as response:
         if response.status == 200:
             data = json.loads(response.read().decode())
             names = []
             for repo in data:
-                names.append(repo['name'])
+                names.append(repo["name"])
         else:
-           rich.print(f"Failed to fetch repos. Status code: {response.status_code}")
+            print(f"Failed to fetch repos. Status code: {response.status_code}")
 
-    authors = {}
-    for name in names:
-        click.echo(url)
+    authors = OrderedDict()
+    total = 0
+    for name in track(names, description="Loading Commits..."):
+        total += 1
         url = f"https://api.github.com/repos/{config['GHORG']}/{name}/commits"
         httprequest = Request(url, headers=headers)
         with urlopen(httprequest) as response:
             if response.status == 200:
                 data = json.loads(response.read().decode())
-                author = data[0]['author']
+                date = data["commit"]["author"]["date"]
+                author = data[0]["author"]
                 if author:
-                    authors[author['login']] = author
+                    authors[date] = author
             else:
-                rich.print(f"Failed to fetch commits. Status code: {response.status_code}")
+                print(f"Failed to fetch commits. Status code: {response.status_code}")
 
-    text = []
-    for author in authors.values():
-        name = author['login']
-        img = author['avatar_url']
-        text.append(f"[![{name}]({img})]({url})")
+    print(f"Loaded {total} commits.")
 
-    result = " ".join(text)
-    rich.print(result)
+    table = Table(title="Latest Blog Updates")
 
-    with open('gallery.md', 'w') as file:
-        file.write(result)
+    table.add_column("Date", justify="right", style="cyan", no_wrap=True)
+    table.add_column("Name", style="magenta")
+    table.add_column("URL", style="green")
+
+    for date, author in authors.items():
+        name = author["login"]
+        img = author["avatar_url"]
+        table.add_row(date, name, img)
