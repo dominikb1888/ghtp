@@ -16,6 +16,7 @@ requests = "^2.31.0"
 pillow = "^10.1.0"
 textual = "^0.44.1"
 ipython = "^8.18.1"
+sparklines = "^0.4.2"
 
 
 [build-system]
